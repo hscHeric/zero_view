@@ -9,10 +9,7 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 
-use crate::{
-    api::{self, google_sheets::EnergyApi},
-    energy_data::energy_monitor::EnergyMonitor,
-};
+use crate::{api::google_sheets::EnergyApi, energy_data::energy_monitor::EnergyMonitor};
 
 use super::widgets::{LeftBottomBlock, RightBottomBlock, UpperBlock};
 

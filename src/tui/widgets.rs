@@ -1,12 +1,10 @@
-// widgets.rs
-
 use crate::energy_data::energy_monitor::EnergyMonitor;
 use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::{Color, Style, Stylize},
-    text::{Line, Span, Text},
-    widgets::{Block, Paragraph, Widget},
+    buffer::{Buffer, Cell},
+    layout::{Constraint, Rect},
+    style::{Color, Modifier, Style, Stylize},
+    text::{Line, Text},
+    widgets::{Block, Paragraph, Row, Table, Widget},
 };
 
 // UpperBlock - Gráfico
@@ -28,7 +26,6 @@ impl<'a> Widget for UpperBlock<'a> {
     }
 }
 
-// LeftBottomBlock - Dados de Energia
 pub struct LeftBottomBlock<'a> {
     pub data: &'a [EnergyMonitor],
 }
@@ -40,29 +37,37 @@ impl<'a> Widget for LeftBottomBlock<'a> {
             .title(title.centered())
             .border_set(ratatui::symbols::border::THICK);
 
-        let data_text = Text::from(
-            self.data
-                .iter()
-                .map(|monitor| {
-                    Line::from(vec![
-                        Span::styled(
-                            format!("{} ", monitor.timestamp().format("%H:%M:%S")),
-                            Style::default().fg(Color::White),
-                        ),
-                        Span::styled(
-                            format!("Power: {:.2}W ", monitor.power_watts()),
-                            Style::default().fg(Color::Blue),
-                        ),
-                        Span::styled(
-                            format!("Current: {:.2}A", monitor.current_amperes()),
-                            Style::default().fg(Color::Yellow),
-                        ),
-                    ])
-                })
-                .collect::<Vec<Line>>(),
-        );
+        let header = Row::new(vec!["Data e Hora", "Potência", "Corrente"]);
 
-        Paragraph::new(data_text).block(block).render(area, buf);
+        // Create rows
+        let rows = self.data.iter().map(|monitor| {
+            Row::new(vec![
+                monitor.timestamp().format("%H:%M:%S").to_string(),
+                format!("{:.2} W", monitor.power_watts()),
+                format!("{:.2} A", monitor.current_amperes()),
+            ])
+        });
+
+        // Create table
+        let table = Table::new(
+            rows,
+            [
+                Constraint::Percentage(40),
+                Constraint::Percentage(30),
+                Constraint::Percentage(30),
+            ],
+        )
+        .header(header)
+        .block(block)
+        .highlight_style(Style::default().bg(Color::Blue).fg(Color::White))
+        .widths(&[
+            Constraint::Percentage(40),
+            Constraint::Percentage(30),
+            Constraint::Percentage(30),
+        ]);
+
+        // Render the table
+        table.render(area, buf);
     }
 }
 

@@ -31,3 +31,9 @@ impl EnergyMonitor {
         self.timestamp
     }
 }
+
+impl PartialEq for EnergyMonitor {
+    fn eq(&self, other: &Self) -> bool {
+        self.timestamp() == other.timestamp()
+    }
+}

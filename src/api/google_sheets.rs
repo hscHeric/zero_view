@@ -17,22 +17,18 @@ pub struct EnergyReading {
 
 impl EnergyReading {
     pub fn parse_timestamp(&self) -> Option<DateTime<Utc>> {
-        // Separate parsing for date and time
         let date_part = match DateTime::parse_from_rfc3339(&self.date) {
             Ok(parsed_date) => parsed_date.date_naive(),
             Err(_) => return None,
         };
 
-        // Special handling for the time part which seems to be in a different format
         let time_part = match NaiveDateTime::parse_from_str(&self.time, "%Y-%m-%dT%H:%M:%S%.fZ") {
             Ok(parsed_time) => parsed_time.time(),
             Err(_) => return None,
         };
 
-        // Combine date and time
         let naive_datetime = date_part.and_time(time_part);
 
-        // Convert to UTC
         Utc.from_local_datetime(&naive_datetime).earliest()
     }
 

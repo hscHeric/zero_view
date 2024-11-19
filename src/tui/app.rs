@@ -3,11 +3,11 @@ use std::io;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     buffer::Buffer,
-    layout::Rect,
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style, Stylize},
     symbols::border,
     text::{Line, Span, Text},
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, Borders, Paragraph, Widget},
     DefaultTerminal, Frame,
 };
 
@@ -50,7 +50,42 @@ impl App {
     }
 
     fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
+        // Layout
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(1)
+            .constraints([
+                Constraint::Percentage(30), // Bloco superior ocupa 30% da altura
+                Constraint::Percentage(70), // Bloco inferior ocupa 70%
+            ])
+            .split(frame.area());
+
+        // Layout para os dois blocos inferiores
+        let bottom_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(50), // Cada bloco ocupa 50% da largura
+                Constraint::Percentage(50),
+            ])
+            .split(chunks[1]);
+
+        let upper_block = Block::default()
+            .title("Bloco Superior")
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::Yellow));
+        frame.render_widget(upper_block, chunks[0]);
+
+        // Bloco inferior esquerdo: Renderiza o widget &App
+        frame.render_widget(self, bottom_chunks[0]);
+
+        // Bloco inferior direito
+        let right_block = Block::default()
+            .title("Bloco Inferior Direito")
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::Cyan));
+        frame.render_widget(right_block, bottom_chunks[1]);
+
+        //frame.render_widget(self, frame.area());
     }
 
     fn handle_events(&mut self) -> io::Result<()> {

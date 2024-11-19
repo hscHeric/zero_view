@@ -2,16 +2,19 @@ use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
-    buffer::Buffer,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout},
     style::{Color, Style, Stylize},
-    symbols::border,
-    text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph, Widget},
+    text::Line,
+    widgets::{Block, Borders},
     DefaultTerminal, Frame,
 };
 
-use crate::{api::google_sheets::EnergyApi, energy_data::energy_monitor::EnergyMonitor};
+use crate::{
+    api::{self, google_sheets::EnergyApi},
+    energy_data::energy_monitor::EnergyMonitor,
+};
+
+use super::widgets::{LeftBottomBlock, RightBottomBlock, UpperBlock};
 
 pub struct App {
     pub data: Vec<EnergyMonitor>,
@@ -38,6 +41,7 @@ impl App {
             exit: false,
         })
     }
+
     pub async fn run(
         &mut self,
         terminal: &mut DefaultTerminal,
@@ -45,14 +49,26 @@ impl App {
         while !self.exit {
             let _ = terminal.draw(|frame| self.draw(frame));
             self.handle_events()?;
+            self.update_data_with_last_reading().await?;
         }
         Ok(())
     }
-
+    async fn update_data_with_last_reading(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let last_energy_reading = self.api.get_last_reading().await?;
+        if let Some(monitor) = EnergyMonitor::new(last_energy_reading) {
+            if self.data.last() != Some(&monitor) {
+                self.data.push(monitor);
+            }
+        }
+        Ok(())
+    }
     fn draw(&self, frame: &mut Frame) {
+        let instructions = Line::from(vec![" Quit ".into(), "<Q> ".blue().bold()]);
+
         // Define o bloco principal que encapsula tudo
         let main_block = Block::default()
             .title("Monitoramento de Energia")
+            .title_bottom(instructions.centered())
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::White).bg(Color::Black));
 
@@ -81,22 +97,17 @@ impl App {
             ])
             .split(chunks[1]);
 
-        // Bloco superior
-        let upper_block = Block::default()
-            .title("Bloco Superior")
-            .borders(Borders::ALL)
-            .style(Style::default().fg(Color::Yellow));
+        // Renderiza o bloco superior (gráfico)
+        let upper_block = UpperBlock { data: &self.data };
         frame.render_widget(upper_block, chunks[0]);
 
-        // Renderiza o conteúdo diretamente no bloco inferior esquerdo (sem encapsulamento)
-        frame.render_widget(self, bottom_chunks[0]);
+        // Renderiza o bloco inferior esquerdo (dados)
+        let left_bottom_block = LeftBottomBlock { data: &self.data };
+        frame.render_widget(left_bottom_block, bottom_chunks[0]);
 
-        // Bloco inferior direito
-        let right_block = Block::default()
-            .title("Bloco Inferior Direito")
-            .borders(Borders::ALL)
-            .style(Style::default().fg(Color::Cyan));
-        frame.render_widget(right_block, bottom_chunks[1]);
+        // Renderiza o bloco inferior direito (picos de corrente)
+        let right_bottom_block = RightBottomBlock { data: &self.data };
+        frame.render_widget(right_bottom_block, bottom_chunks[1]);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -113,43 +124,5 @@ impl App {
         if let KeyCode::Char('q') = key_event.code {
             self.exit = true
         }
-    }
-}
-
-impl Widget for &App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" Show data ".bold());
-        let instructions = Line::from(vec![" Quit ".into(), "<Q> ".blue().bold()]);
-        let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::THICK);
-
-        let data_text = Text::from(
-            self.data
-                .iter()
-                .map(|monitor| {
-                    Line::from(vec![
-                        Span::styled(
-                            format!("{} ", monitor.timestamp().format("%H:%M:%S")),
-                            Style::default().fg(Color::White),
-                        ),
-                        Span::styled(
-                            format!("Power: {:.2}W ", monitor.power_watts()),
-                            Style::default().fg(Color::Blue),
-                        ),
-                        Span::styled(
-                            format!("Current: {:.2}A", monitor.current_amperes()),
-                            Style::default().fg(Color::Yellow),
-                        ),
-                    ])
-                })
-                .collect::<Vec<Line>>(),
-        );
-
-        Paragraph::new(data_text)
-            .centered()
-            .block(block)
-            .render(area, buf);
     }
 }

@@ -50,32 +50,45 @@ impl App {
     }
 
     fn draw(&self, frame: &mut Frame) {
-        // Layout
+        // Define o bloco principal que encapsula tudo
+        let main_block = Block::default()
+            .title("Monitoramento de Energia")
+            .borders(Borders::ALL)
+            .style(Style::default().fg(Color::White).bg(Color::Black));
+
+        // Calcula a área interna do bloco principal
+        let main_area = main_block.inner(frame.area());
+
+        // Renderiza o bloco principal
+        frame.render_widget(main_block, frame.area());
+
+        // Divide o layout dentro do bloco principal
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
             .constraints([
-                Constraint::Percentage(30), // Bloco superior ocupa 30% da altura
-                Constraint::Percentage(70), // Bloco inferior ocupa 70%
+                Constraint::Percentage(30), // Parte superior ocupa 30% da altura
+                Constraint::Percentage(70), // Parte inferior ocupa 70% da altura
             ])
-            .split(frame.area());
+            .split(main_area);
 
-        // Layout para os dois blocos inferiores
+        // Divide a área inferior em dois blocos horizontais
         let bottom_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage(50), // Cada bloco ocupa 50% da largura
-                Constraint::Percentage(50),
+                Constraint::Percentage(50), // Inferior esquerdo ocupa 50% da largura
+                Constraint::Percentage(50), // Inferior direito ocupa 50% da largura
             ])
             .split(chunks[1]);
 
+        // Bloco superior
         let upper_block = Block::default()
             .title("Bloco Superior")
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::Yellow));
         frame.render_widget(upper_block, chunks[0]);
 
-        // Bloco inferior esquerdo: Renderiza o widget &App
+        // Renderiza o conteúdo diretamente no bloco inferior esquerdo (sem encapsulamento)
         frame.render_widget(self, bottom_chunks[0]);
 
         // Bloco inferior direito
@@ -84,8 +97,6 @@ impl App {
             .borders(Borders::ALL)
             .style(Style::default().fg(Color::Cyan));
         frame.render_widget(right_block, bottom_chunks[1]);
-
-        //frame.render_widget(self, frame.area());
     }
 
     fn handle_events(&mut self) -> io::Result<()> {

@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -75,5 +75,11 @@ impl EnergyApi {
             .await?;
 
         Ok(readings)
+    }
+}
+
+impl Default for EnergyApi {
+    fn default() -> Self {
+        Self::new()
     }
 }

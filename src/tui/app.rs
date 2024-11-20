@@ -11,13 +11,14 @@ use ratatui::{
 
 use crate::{api::google_sheets::EnergyApi, energy_data::energy_monitor::EnergyMonitor};
 
-use super::widgets::{LeftBottomBlock, RightBottomBlock, UpperBlock};
+use super::widgets::{LeftBottomBlock, RightBottomBlock, UpperBlock, UpperBlockState};
 
 pub struct App {
     pub data: Vec<EnergyMonitor>,
     pub api: EnergyApi,
     pub exit: bool,
     pub left_bottom_block_state: TableState, // Estado da tabela
+    pub upper_block_state: UpperBlockState,
 }
 
 impl App {
@@ -41,6 +42,7 @@ impl App {
             api,
             exit: false,
             left_bottom_block_state,
+            upper_block_state: UpperBlockState::default(),
         })
     }
     pub async fn run(
@@ -95,7 +97,11 @@ impl App {
             .split(chunks[1]);
 
         let upper_block = UpperBlock { data: &self.data };
-        frame.render_widget(upper_block, chunks[0]);
+        frame.render_stateful_widget(
+            upper_block,
+            chunks[0],
+            &mut self.upper_block_state, // Pass the stateful widget state
+        );
 
         // Passando a referência mutável para o LeftBottomBlock
         let left_bottom_block = LeftBottomBlock {
@@ -106,15 +112,6 @@ impl App {
 
         let right_bottom_block = RightBottomBlock { data: &self.data };
         frame.render_widget(right_bottom_block, bottom_chunks[1]);
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match key_event.code {
-            KeyCode::Char('q') => self.exit = true,
-            KeyCode::Down => self.move_selection(1), // Avançar na seleção
-            KeyCode::Up => self.move_selection(-1),  // Retroceder na seleção
-            _ => {}
-        }
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -128,6 +125,26 @@ impl App {
         Ok(())
     }
 
+    fn handle_key_event(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('q') => self.exit = true,
+            KeyCode::Down => self.move_selection(1),
+            KeyCode::Up => self.move_selection(-1),
+            KeyCode::Right => {
+                // Scroll right (forward) in UpperBlock
+                if self.upper_block_state.offset + 1 < self.upper_block_state.total_groups {
+                    self.upper_block_state.offset += 1;
+                }
+            }
+            KeyCode::Left => {
+                // Scroll left (backward) in UpperBlock
+                if self.upper_block_state.offset > 0 {
+                    self.upper_block_state.offset -= 1;
+                }
+            }
+            _ => {}
+        }
+    }
     fn move_selection(&mut self, delta: isize) {
         if let Some(selected) = self.left_bottom_block_state.selected() {
             let new_selected = if delta > 0 {

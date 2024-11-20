@@ -4,7 +4,7 @@ use ratatui::{
     layout::{Constraint, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Text},
-    widgets::{Block, Paragraph, Row, Table, Widget},
+    widgets::{Block, Paragraph, Row, StatefulWidget, Table, TableState, Widget},
 };
 
 // UpperBlock - Gráfico
@@ -28,6 +28,17 @@ impl<'a> Widget for UpperBlock<'a> {
 
 pub struct LeftBottomBlock<'a> {
     pub data: &'a [EnergyMonitor],
+    pub state: &'a mut TableState, // Usar uma referência mutável
+}
+
+impl<'a> LeftBottomBlock<'a> {
+    // A função `new` também precisa receber uma referência mutável para o estado
+    pub fn new(data: &'a [EnergyMonitor], state: &'a mut TableState) -> Self {
+        if !data.is_empty() {
+            state.select(Some(0)); // Inicia na primeira linha
+        }
+        Self { data, state }
+    }
 }
 
 impl<'a> Widget for LeftBottomBlock<'a> {
@@ -37,9 +48,15 @@ impl<'a> Widget for LeftBottomBlock<'a> {
             .title(title.centered())
             .border_set(ratatui::symbols::border::THICK);
 
-        let header = Row::new(vec!["Data e Hora", "Potência", "Corrente"]);
+        let header_style = Style::default()
+            .fg(Color::Yellow)
+            .bg(Color::Black)
+            .add_modifier(Modifier::BOLD);
 
-        // Create rows
+        let header = Row::new(vec!["Data e Hora", "Potência", "Corrente"])
+            .style(header_style)
+            .height(1);
+
         let rows = self.data.iter().map(|monitor| {
             Row::new(vec![
                 monitor.timestamp().format("%H:%M:%S").to_string(),
@@ -48,7 +65,11 @@ impl<'a> Widget for LeftBottomBlock<'a> {
             ])
         });
 
-        // Create table
+        let highlight_style = Style::default()
+            .bg(Color::Blue)
+            .fg(Color::White)
+            .add_modifier(Modifier::BOLD);
+
         let table = Table::new(
             rows,
             [
@@ -59,15 +80,16 @@ impl<'a> Widget for LeftBottomBlock<'a> {
         )
         .header(header)
         .block(block)
-        .highlight_style(Style::default().bg(Color::Blue).fg(Color::White))
+        .highlight_style(highlight_style)
+        .highlight_symbol(">> ")
         .widths(&[
             Constraint::Percentage(40),
             Constraint::Percentage(30),
             Constraint::Percentage(30),
         ]);
 
-        // Render the table
-        table.render(area, buf);
+        // Renderizar tabela com estado (para scroll)
+        StatefulWidget::render(&table, area, buf, &mut self.state.clone());
     }
 }
 

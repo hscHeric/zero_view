@@ -4,12 +4,54 @@ use ratatui::{
     layout::{Constraint, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Text},
-    widgets::{Block, Paragraph, Row, StatefulWidget, Table, TableState, Widget},
+    widgets::{
+        Bar, BarChart, BarGroup, Block, Borders, Paragraph, Row, StatefulWidget, Table, TableState,
+        Widget,
+    },
 };
 
 // UpperBlock - Gráfico
 pub struct UpperBlock<'a> {
     pub data: &'a [EnergyMonitor],
+}
+
+impl<'a> UpperBlock<'a> {
+    fn to_grouped_bar_chart(&self) -> BarChart<'a> {
+        let mut barchart = BarChart::default()
+            .block(Block::new().title(Line::from("Energy Monitoring").centered()))
+            .bar_gap(0)
+            .bar_width(6)
+            .group_gap(2);
+
+        let mut sorted_data = self.data.to_vec();
+        sorted_data.sort_by_key(|b| std::cmp::Reverse(b.timestamp()));
+
+        let data: Vec<BarGroup<'_>> = sorted_data
+            .iter()
+            .map(|monitor| {
+                let timestamp_label = monitor.timestamp().format("%H:%M:%S").to_string();
+
+                BarGroup::default()
+                    .label(Line::from(timestamp_label))
+                    .bars(&[
+                        Bar::default()
+                            .value(monitor.power_watts().round() as u64)
+                            .label(Line::from("Watts"))
+                            .style(Style::default().fg(Color::Green)),
+                        Bar::default()
+                            .value((monitor.current_amperes() * 100.0).round() as u64)
+                            .label(Line::from("Amps"))
+                            .style(Style::default().fg(Color::Blue)),
+                    ])
+            })
+            .collect();
+
+        for group in data {
+            barchart = barchart.data(group);
+        }
+
+        barchart
+    }
 }
 
 impl<'a> Widget for UpperBlock<'a> {
@@ -19,10 +61,9 @@ impl<'a> Widget for UpperBlock<'a> {
             .title(title.centered())
             .border_set(ratatui::symbols::border::THICK);
 
-        // Aqui seria o lugar para o gráfico. Vamos simular com um texto por enquanto
-        let text = Text::from(vec![Line::from("Simulação de gráfico de energia")]);
+        let barchart = self.to_grouped_bar_chart();
 
-        Paragraph::new(text).block(block).render(area, buf);
+        barchart.block(block).render(area, buf);
     }
 }
 

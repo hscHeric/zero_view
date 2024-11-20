@@ -116,6 +116,7 @@ impl App {
             _ => {}
         }
     }
+
     fn handle_events(&mut self) -> io::Result<()> {
         if event::poll(std::time::Duration::from_millis(100))? {
             if let Event::Key(key_event) = event::read()? {
@@ -126,6 +127,7 @@ impl App {
         }
         Ok(())
     }
+
     fn move_selection(&mut self, delta: isize) {
         if let Some(selected) = self.left_bottom_block_state.selected() {
             let new_selected = if delta > 0 {
